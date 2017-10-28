@@ -7,7 +7,7 @@
 [![Code Climate](https://codeclimate.com/github/moip/moip-sdk-ruby/badges/gpa.svg)](https://codeclimate.com/github/moip/moip-sdk-ruby)
 [![Test Coverage](https://codeclimate.com/github/moip/moip-sdk-ruby/badges/coverage.svg)](https://codeclimate.com/github/moip/moip-sdk-ruby/coverage)
 
-**Índice** 
+**Índice**
 
 - [Instalação](#instalação)
 - [Configurando a autenticação](#configurando-a-autenticação)
@@ -18,6 +18,8 @@
   - [Clientes](#clientes)
     - [Criação](#criação)
     - [Consulta](#consulta)
+    - [Adicionar cartão de crédito](#adicionar-cartão-de-crédito)
+    - [Deletar cartão de crédito](#deletar-cartão-de-crédito)
   - [Pedidos](#pedidos)
     - [Criação](#criação-1)
     - [Consulta](#consulta-1)
@@ -26,6 +28,7 @@
         - [Sem Filtro](#sem-filtro)
         - [Com Filtros](#com-filtros)
         - [Com Paginação](#com-paginação)
+        - [Consulta Valor Específico](#consulta-valor-específico)
   - [Pagamentos](#pagamentos)
     - [Criação](#criação-2)
       - [Cartão de Crédito](#cartão-de-crédito)
@@ -46,6 +49,8 @@
   - [Multipagamentos](#multipagamentos)
     - [Criação](#criação-5)
     - [Consulta](#consulta-5)
+    - [Capturar multipagamento pré-autorizado](#capturar-multipagamento-pré-autorizado)
+    - [Cancelar multipagamento pré-autorizado](#cancelar-multipagamento-pré-autorizado)
   - [Conta Moip](#conta-moip)
     - [Criação](#criação-6)
     - [Consulta](#consulta-6)
@@ -54,6 +59,15 @@
     - [Solicitar permissões de acesso ao usuário](#solicitar-permissões-de-acesso-ao-usuário)
     - [Gerar Token OAuth](#gerar-token-oauth)
     - [Atualizar Token OAuth](#atualizar-token-oauth)
+    - [Obter Chave Pública](#obter-chave-pública)
+  - [Preferências de Notificação](#preferências-de-notificação)
+    -  [Criação](#criação-7)
+    -  [Consulta](#consulta-7)
+    -  [Exclusão](#exclusão)
+    -  [Listagem](#listagem)
+  - [Saldo Moip](#saldo-moip)
+    -  [Consulta](#consulta-8)
+- [Tratamento de Exceções](#tratamento-de-exceções)
 - [Documentação](#documentação)
 - [Licença](#licença)
 
@@ -115,6 +129,48 @@ customer = api.customer.create({
 customer = api.customer.show("CUS-V41BR451L")
 ```
 
+### Adicionar cartão de crédito
+```ruby
+credit_card = api.customer.add_credit_card("CUSTOMER-ID",
+    {
+      method: "CREDIT_CARD",
+      creditCard: {
+        expirationMonth: "05",
+        expirationYear: "22",
+        number: "5555666677778884",
+        cvc: "123",
+        holder: {
+          fullname: "Jose Portador da Silva",
+          birthdate: "1988-12-30",
+          taxDocument: {
+            type: "CPF",
+            number: "33333333333",
+          },
+          phone: {
+            countryCode: "55",
+            areaCode: "11",
+            number: "66778899",
+          },
+        },
+      },
+    }
+)
+```
+
+### Deletar cartão de crédito
+
+> Retorna uma Exception do tipo `NotFoundError` caso não encontre o cartão de crédito para deletar
+
+```ruby
+api.customer.delete_credit_card!("CREDIT-CARD-ID")
+```
+
+> Retorna `false` caso não encontre o cartão de crédito para deletar
+
+```ruby
+api.customer.delete_credit_card("CREDIT-CARD-ID")
+```
+
 ## Pedidos
 ### Criação
 
@@ -158,10 +214,15 @@ orders = api.order.find_all(filters: { status: { in: ["PAID", "WAITING"] }, amou
 orders = api.order.find_all(limit: 10, offset: 50)
 ```
 
+##### Consulta Valor Específico
+```ruby
+orders = api.order.find_all(q: "your_value")
+```
+
 ## Pagamentos
 
 ### Criação
-#### Cartão de Crédito 
+#### Cartão de Crédito
 ##### Com Hash
 
 ```ruby
@@ -186,7 +247,7 @@ api.payment.create(order.id,
 )
 ```
 
-##### Com Dados do Cartão 
+##### Com Dados do Cartão
 > Esses método requer certificação PCI. [Consulte a documentação.](https://documentao-moip.readme.io/v2.0/reference#criar-pagamento)
 
 ```ruby
@@ -294,7 +355,7 @@ multi_pag = api.multi_payment.create("MOR-V41BR451L",
   {
     installmentCount: 1,
     fundingInstrument: {
-      # ... 
+      # ...
     }
   }
 )
@@ -302,6 +363,15 @@ multi_pag = api.multi_payment.create("MOR-V41BR451L",
 ### Consulta
 ```ruby
 multi_pag = api.multi_payment.show("MPY-V41BR451L")
+```
+
+### Capturar multipagamento pré-autorizado
+```ruby
+multi = api.multi_payment.capture("MPY-V41BR451L")
+```
+### Cancelar multipagamento pré-autorizado
+```ruby
+multi = api.multi_payment.void("MPY-V41BR451L")
 ```
 
 ## Conta Moip
@@ -379,6 +449,67 @@ api.connect.authorize(
   refresh_token: "1d5dc51e71674683b4ed79cd7a988fa1_v2",
   grant_type: "refresh_token"
 )
+```
+
+### Obter Chave Pública
+```ruby
+keys = api.keys.show
+```
+
+## Preferências de notificação
+
+### Criação
+```ruby
+api.notifications.create(
+  events: ["ORDER.*", "PAYMENT.AUTHORIZED", "PAYMENT.CANCELLED"],
+  target: "http://requestb.in/1dhjesw1",
+  media: "WEBHOOK"
+)
+```
+
+### Consulta
+```ruby
+api.notifications.show("NOTIFICATION-ID")
+```
+
+### Exclusão
+> Caso o notification não seja encontrado uma exceção do tipo `NotFoundError` será lançada, veja como tratar [aqui](#tratamento-de-exceções).
+
+```ruby
+api.notifications.delete("NOTIFICATION-ID")
+```
+
+### Listagem
+```ruby
+api.notifications.find_all
+```
+
+## Saldo Moip
+### Consulta
+```ruby
+api.balances.show()
+```
+
+### Show all entries
+```ruby
+  entry_api.find_all
+```
+### Show one entry
+```ruby
+  entry_api.show(entry_id)
+```
+## Tratamento de Exceções
+
+Caso algum recurso não seja encontrado uma exceção do tipo `NotFoundError` será lançada.
+
+```ruby
+begin
+  api.payment.create(
+    # ...
+  )
+rescue NotFoundError => e
+  puts e.message
+end
 ```
 
 ## Documentação
