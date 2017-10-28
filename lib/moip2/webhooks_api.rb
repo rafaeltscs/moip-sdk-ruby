@@ -6,12 +6,12 @@ module Moip2
 			@client = client
 		end
 
-		def base_path
-			"/v2/webhooks"
+		def base_path(resource_id: nil)
+			["", "v2", "webhooks", resource_id].compact.join("/")
 		end
 
-		def all
-			Resource::Webhooks.new(client, client.get(base_path))
+		def find_all(resource_id)
+			Resource::Webhooks.new(client, client.get(base_path(resource_id)))
 		end
 
 	end
